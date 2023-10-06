@@ -223,9 +223,12 @@ sub get_possible_matches {
 
   # Eliminate words containing banned letters
   if ($self->{absent}) {
-    my $pattern = join('', '[', keys(%{$self->{absent}}), ']');
-    foreach my $word (grep { /$pattern/} keys %{$self->{words}}) {
-      delete $self->{words}{$word};
+    my @letters = keys %{$self->{absent}};
+    if (@letters) {
+      my $pattern = join('', '[', @letters, ']');
+      foreach my $word (grep { /$pattern/} keys %{$self->{words}}) {
+        delete $self->{words}{$word};
+      }
     }
   }
 
