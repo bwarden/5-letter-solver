@@ -33,14 +33,14 @@ sub new {
   $self->{scorefile}  = catfile($RealBin, "scores.txt");
 
   # Store the current progress
-  # Correct and Misplaced are arrays indexed by column of the guessed word
-  $self->{correct}    = ['', '', '', '', '']; # one possible correct letter per column
-  $self->{misplaced}  = [{}, {}, {}, {}, {}]; # hash of letters that don't appear in each column
+  # Correct and Present are arrays indexed by column of the guessed word
+  $self->{correct}  = ['', '', '', '', '']; # one possible correct letter per column
+  $self->{present}  = [{}, {}, {}, {}, {}]; # hash of letters that are in the wrong column
   # Lump of all the letters that don't belong
-  $self->{incorrect}      = {}; # keys are individual letters, value is true
+  $self->{absent}   = {}; # keys are individual letters, value is true
 
   # Where we keep the narrowed-down, scored word list
-  # keys are words, values are hashrefs, with subkeys for numeric score, and a true/non-true value for used
+  # keys are words, values are hashrefs, with subkeys for numeric score, and a true/non-true value for whether it has been used before
   $self->{words}      = {};
 
   # Load overridden values
@@ -185,21 +185,21 @@ sub add_guess {
     }
   }
 
-  if ($guesses->{misplaced} && $guesses->{misplaced} =~ m#([\sa-z]{5})#i) {
+  if ($guesses->{present} && $guesses->{present} =~ m#([\sa-z]{5})#i) {
     my @letters = split('', lc $1);
     for (my $i = 0; $i < @letters; $i++) {
       my $letter = $letters[$i];
       if ($letter =~ m#^[a-z]#) {
-        $self->{misplaced}[$i]{$letter}++;
+        $self->{present}[$i]{$letter}++;
       }
     }
   }
 
-  if ($guesses->{incorrect} && $guesses->{incorrect} =~ m#([\sa-z]{5})#i) {
+  if ($guesses->{absent} && $guesses->{absent} =~ m#([\sa-z]{5})#i) {
     my @letters = split('', lc $1);
     foreach my $letter (@letters) {
       if ($letter =~ m#^[a-z]#) {
-        $self->{incorrect}{$letter}++;
+        $self->{absent}{$letter}++;
       }
     }
   }
@@ -222,22 +222,22 @@ sub get_possible_matches {
   }
 
   # Eliminate words containing banned letters
-  if ($self->{incorrect}) {
-    my $pattern = join('', '[', keys(%{$self->{incorrect}}), ']');
+  if ($self->{absent}) {
+    my $pattern = join('', '[', keys(%{$self->{absent}}), ']');
     foreach my $word (grep { /$pattern/} keys %{$self->{words}}) {
       delete $self->{words}{$word};
     }
   }
 
-  # Eliminate words with correct letters in incorrect places
-  if ($self->{misplaced}) {
-    for (my $col = 0; $col < @{$self->{misplaced}}; $col++) {
-      my @letters = keys %{$self->{misplaced}[$col]};
+  # Eliminate words with correct letters in absent places
+  if ($self->{present}) {
+    for (my $col = 0; $col < @{$self->{present}}; $col++) {
+      my @letters = keys %{$self->{present}[$col]};
       if (@letters) {
         # Eliminate words with forbidden letters in a given column
         my $pattern = '[a-z]' x ($col);
         $pattern .= join('', '[', @letters, ']');
-        $pattern .= '[a-z]' x (scalar @{$self->{misplaced}} - $col - 1);
+        $pattern .= '[a-z]' x (scalar @{$self->{present}} - $col - 1);
 
         foreach my $word (grep { /^$pattern$/} keys %{$self->{words}}) {
           delete $self->{words}{$word};

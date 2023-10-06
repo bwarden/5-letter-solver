@@ -31,31 +31,31 @@ my $g = FiveLetter->new;
 
 print "Guessing STORY\n";
 $g->add_guess({
-    incorrect => 'STORY',
+    absent  => 'STORY',
   });
 
 print join(', ', $g->get_possible_matches), "\n";
 
 print "Guessing ADIEU\n";
 $g->add_guess({
-    misplaced => 'A  E ',
-    incorrect => ' DI U',
+    present => 'A  E ',
+    absent  => ' DI U',
   });
 
 print join(', ', $g->get_possible_matches), "\n";
 
 print "Guessing GLAZE\n";
 $g->add_guess({
-    correct   => ' la e',
-    incorrect => 'g  z ',
+    correct => ' la e',
+    absent  => 'g  z ',
   });
 
 print join(', ', $g->get_possible_matches), "\n";
 
 print "Guessing FLAKE\n";
 $g->add_guess({
-    correct   => 'fla e',
-    incorrect => '   k ',
+    correct => 'fla e',
+    absent  => '   k ',
   });
 
 print join(', ', $g->get_possible_matches), "\n";
