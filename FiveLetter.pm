@@ -256,6 +256,54 @@ sub get_possible_matches {
   return @words;
 }
 
+# For testing, pick and memorize a word, so we can simulate the actual game
+sub pick_a_word {
+  my ($self) = @_;
+
+  my @words = keys %{$self->{words}};
+  $self->{secret_word} = $words[rand @words];
+
+  return;
+}
+
+# For testing, apply a guess to the secret word and return the quality
+sub guess_my_word {
+  my ($self, $guess) = @_;
+
+  my %quality;
+
+  # Make sure we have a word
+  unless ($self->{secret_word}) {
+    $self->pick_a_word;
+  }
+
+  if ($guess !~ m#^[a-z]{5}$#) {
+    die "Invalid guess: $guess\n";
+  }
+
+  my @secret = split('', $self->{secret_word});
+  my @guess  = split('', lc $guess);
+
+  for (my $col = 0; $col < @secret; $col++) {
+    if ($guess[$col] eq $secret[$col]) {
+      $quality{correct} .= $guess[$col];
+      $quality{present} .= ' ';
+      $quality{absent}  .= ' ';
+    }
+    elsif ($self->{secret_word} =~ m/$guess[$col]/) {
+      $quality{correct} .= ' ';
+      $quality{present} .= $guess[$col];
+      $quality{absent}  .= ' ';
+    }
+    else {
+      $quality{correct} .= ' ';
+      $quality{present} .= ' ';
+      $quality{absent} .= $guess[$col];
+    }
+  }
+
+  return \%quality;
+}
 
 # TODO
 # Implement functions that return results ordered by score and whether they've been used before
