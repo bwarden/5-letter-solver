@@ -23,11 +23,39 @@ use warnings;
 use utf8;
 
 use FindBin qw($RealBin);
-use YAML qw(Dump);
 
 use lib "$RealBin";
 use FiveLetter;
 
 my $g = FiveLetter->new;
 
-print Dump($g);
+print "Guessing STORY\n";
+$g->add_guess({
+    incorrect => 'STORY',
+  });
+
+print join(', ', $g->get_possible_matches), "\n";
+
+print "Guessing ADIEU\n";
+$g->add_guess({
+    misplaced => 'A  E ',
+    incorrect => ' DI U',
+  });
+
+print join(', ', $g->get_possible_matches), "\n";
+
+print "Guessing GLAZE\n";
+$g->add_guess({
+    correct   => ' la e',
+    incorrect => 'g  z ',
+  });
+
+print join(', ', $g->get_possible_matches), "\n";
+
+print "Guessing FLAKE\n";
+$g->add_guess({
+    correct   => 'fla e',
+    incorrect => '   k ',
+  });
+
+print join(', ', $g->get_possible_matches), "\n";
