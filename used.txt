@@ -152,6 +152,7 @@ cheek
 chest
 chief
 chill
+chime
 choir
 choke
 chord
