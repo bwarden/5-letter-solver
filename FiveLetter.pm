@@ -237,8 +237,14 @@ sub get_possible_matches {
     for (my $col = 0; $col < @{$self->{present}}; $col++) {
       my @letters = keys %{$self->{present}[$col]};
       if (@letters) {
+        # Eliminate words that don't contain all the present letters
+        my $pattern = join('', '[', @letters, ']');
+        foreach my $word (grep { ! /$pattern/} keys %{$self->{words}}) {
+          delete $self->{words}{$word};
+        }
+
         # Eliminate words with forbidden letters in a given column
-        my $pattern = '[a-z]' x ($col);
+        $pattern = '[a-z]' x ($col);
         $pattern .= join('', '[', @letters, ']');
         $pattern .= '[a-z]' x (scalar @{$self->{present}} - $col - 1);
 
