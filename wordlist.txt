@@ -776,11 +776,6 @@ clues
 clump
 clung
 clunk
-clvii
-clxii
-clxiv
-clxix
-clxvi
 coach
 coals
 coast
@@ -2373,7 +2368,6 @@ lurks
 lusts
 lusty
 lutes
-lxvii
 lying
 lymph
 lynch
@@ -4605,17 +4599,9 @@ wroth
 wrung
 wryer
 wryly
-xcvii
 xenon
 xrefs
 xterm
-xviii
-xxiii
-xxvii
-xxxii
-xxxiv
-xxxix
-xxxvi
 xylem
 yacht
 yacks
