@@ -320,11 +320,14 @@ sub get_possible_matches {
     }
   }
 
-  my @words;
+  my %words;
   foreach my $word (sort keys %{$self->{words}}) {
-    push(@words, $word . ' (' . $self->{words}{$word}{score} . ', ' . ($self->{words}{$word}{used} ? 'used' : 'unused') . ')'); 
+    $words{$word} = {
+      score => $self->{words}{$word}{score} || 0,
+      used  => $self->{words}{$word}{used}  || 0,
+    };
   }
-  return @words;
+  return \%words;
 }
 
 # For testing, pick and memorize a word, so we can simulate the actual game

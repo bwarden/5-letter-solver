@@ -31,18 +31,31 @@ my $g = FiveLetter->new;
 my $guesses = 0;
 
 GUESS:
-while (my @words = $g->get_possible_matches) {
-  if ($words[rand @words] =~ m#^([a-z]+)#) {
-    my $guess = $1;
-    print "Guessing $guess out of ", scalar @words, " possible words\n";
-    my $quality = $g->guess_my_word($guess);
-    $guesses++;
-    if ($quality->{correct} eq $guess) {
-      print "The secret word was $guess\n";
-      last GUESS;
-    }
-    $g->add_guess($quality);
+while (my $words = $g->get_possible_matches) {
+  my $guess = get_best_word($words)
+    or die "Out of words! Didn't guess $g->{secret_word}\n";
+  print "Guessing $guess out of ", scalar keys %{$words}, " possible words\n";
+  my $quality = $g->guess_my_word($guess);
+  $guesses++;
+  if ($quality->{correct} eq $guess) {
+    print "The secret word was $guess\n";
+    last GUESS;
   }
+  $g->add_guess($quality);
 }
 
 print "Total guesses: $guesses\n";
+
+exit;
+
+sub get_best_word {
+  my ($wordsref) = @_;
+
+  my @words;
+  if ($wordsref && ref $wordsref eq 'HASH') {
+    @words = sort { ($wordsref->{$a}{score} - $wordsref->{$a}{used} ? 1000 : 0) <=> ($wordsref->{$b}{score} - $wordsref->{$b}{used} ? 1000 : 0) } keys %{$wordsref};
+  }
+
+  # Highest sort at the end
+  return pop @words;
+}
