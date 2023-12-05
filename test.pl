@@ -53,9 +53,9 @@ sub get_best_word {
 
   my @words;
   if ($wordsref && ref $wordsref eq 'HASH') {
-    @words = sort { ($wordsref->{$a}{score} - $wordsref->{$a}{used} ? 1000 : 0) <=> ($wordsref->{$b}{score} - $wordsref->{$b}{used} ? 1000 : 0) } keys %{$wordsref};
+    @words = sort { ($wordsref->{$a}{score} + 1000 * $wordsref->{$a}{used}) <=> ($wordsref->{$b}{score} + 1000 * $wordsref->{$b}{used}) } keys %{$wordsref};
   }
 
-  # Highest sort at the end
-  return pop @words;
+  # Lowest points at the beginning
+  return shift @words;
 }

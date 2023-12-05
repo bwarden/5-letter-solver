@@ -83,9 +83,12 @@ sub _update_scores {
 
   if ($self->{words} && $self->{score}) {
     foreach my $word (keys (%{$self->{words}})) {
+      my %used;
       my $score = 0;
       foreach my $letter (split(//, $word)) {
         $score += $self->{score}{$letter};
+        $score += ($used{$letter}||0)*10; # Penalize repeated letters
+        $used{$letter}++;
       }
       $self->{words}{$word}{score} = $score;
     }
