@@ -36,8 +36,7 @@ sub new {
   # Correct and Present are arrays indexed by column of the guessed word
   $self->{correct}  = ['', '', '', '', '']; # one possible correct letter per column
   $self->{present}  = [{}, {}, {}, {}, {}]; # hash of letters that are in the wrong column
-  # Lump of all the letters that don't belong
-  $self->{absent}   = {}; # keys are individual letters, value is true
+  $self->{absent}   = [{}, {}, {}, {}, {}]; # hash of letters that don't exist in this column, may not exist in the word
 
   # Where we keep the narrowed-down, scored word list
   # keys are words, values are hashrefs, with subkeys for numeric score, and a true/non-true value for whether it has been used before
@@ -197,9 +196,10 @@ sub add_guess {
 
   if ($guesses->{absent} && $guesses->{absent} =~ m#([\sa-z]{5})#i) {
     my @letters = split('', lc $1);
-    foreach my $letter (@letters) {
+    for (my $i = 0; $i < @letters; $i++) {
+      my $letter = $letters[$i];
       if ($letter =~ m#^[a-z]#) {
-        $self->{absent}{$letter}++;
+        $self->{absent}[$i]{$letter}++;
       }
     }
   }
@@ -217,17 +217,80 @@ sub get_possible_matches {
       $pattern .= $letter ? $letter : '[a-z]';
     }
     foreach my $word (grep { !/^$pattern$/ } keys %{$self->{words}}) {
+      # warn "DELETE $word does not match known correct letters\n";
       delete $self->{words}{$word};
     }
   }
 
-  # Eliminate words containing banned letters
+  # Eliminate words containing banned letters in excess of what's allowed by correct position or multiples
   if ($self->{absent}) {
-    my @letters = keys %{$self->{absent}};
-    if (@letters) {
-      my $pattern = join('', '[', @letters, ']');
-      foreach my $word (grep { /$pattern/} keys %{$self->{words}}) {
+
+    # Delete words containing a banned letter in the column where it's marked absent
+    for (my $col = 0; $col < @{$self->{absent}}; $col++) {
+      my @letters = keys %{$self->{absent}[$col]};
+      if (@letters) {
+        # Eliminate words with the absent letter in this column
+        my $pattern = '[a-z]' x ($col);
+        $pattern .= join('', '[', @letters, ']');
+        $pattern .= '[a-z]' x (scalar @{$self->{absent}} - $col - 1);
+
+        foreach my $word (grep {/^$pattern$/} keys %{$self->{words}}) {
+          # warn "DELETE $word contains letter marked absent in same column\n";
+          delete $self->{words}{$word};
+        }
+      }
+    }
+
+    # Delete words that have more instances of a letter than marked correct or present when also marked absent somewhere
+    my %absent;
+    my %present;
+
+    # Gather letters marked absent -- that means they have a limit
+    foreach my $set (@{$self->{absent}}) {
+      foreach my $letter (keys %{$set}) {
+        $absent{$letter}=1;
+      }
+    }
+
+    # Count instances of letters that are marked present or correct
+    foreach my $set (@{$self->{present}}) {
+      foreach my $letter (keys %{$set}) {
+        $present{$letter}++;
+      }
+    }
+    foreach my $letter (@{$self->{correct}}) {
+      if ($letter =~ m/^[a-z]$/) {
+        $present{$letter}++;
+      }
+    }
+
+    # For every letter with a limit (because it's been marked absent *somewhere*), make sure there are no more instances than allowed
+    # First, eliminate all words that contain a letter that's *only* absent
+    my @always_absent;
+    foreach my $letter (keys %absent) {
+      if (! $present{$letter}) {
+        push(@always_absent, $letter);
+      }
+    }
+    if (@always_absent) {
+      my $pattern = join('', '[', @always_absent, ']');
+      # warn "ALWAYS ABSENT PATTERN: $pattern\n";
+      foreach my $word (grep {/$pattern/} keys %{$self->{words}}) {
+        # warn "DELETE $word contains letter marked absent everywhere\n";
         delete $self->{words}{$word};
+      }
+    }
+
+    # Second, eliminate words that have more instances of a limited letter than allowed by correct and present
+    foreach my $letter (keys %absent) {
+      if ($present{$letter}) {
+        foreach my $word (keys %{$self->{words}}) {
+          my $count = scalar split('', grep {/$letter/} $word);
+          if ($count > $present{$letter}) {
+            # warn "DELETE $word contains more than allowed instances of $letter\n";
+            delete $self->{words}{$word};
+          }
+        }
       }
     }
   }
@@ -235,11 +298,12 @@ sub get_possible_matches {
   # Eliminate words with correct letters in absent places
   if ($self->{present}) {
     for (my $col = 0; $col < @{$self->{present}}; $col++) {
-      my @letters = keys %{$self->{present}[$col]};
+      my @letters = sort keys %{$self->{present}[$col]};
       if (@letters) {
         # Eliminate words that don't contain all the present letters
         my $pattern = join('', '[', @letters, ']');
         foreach my $word (grep { ! /$pattern/} keys %{$self->{words}}) {
+          # warn "DELETE $word missing required letters\n";
           delete $self->{words}{$word};
         }
 
@@ -249,6 +313,7 @@ sub get_possible_matches {
         $pattern .= '[a-z]' x (scalar @{$self->{present}} - $col - 1);
 
         foreach my $word (grep { /^$pattern$/} keys %{$self->{words}}) {
+          # warn "DELETE $word contains a letter present only in other columns\n";
           delete $self->{words}{$word};
         }
       }
@@ -290,23 +355,49 @@ sub guess_my_word {
   my @secret = split('', $self->{secret_word});
   my @guess  = split('', lc $guess);
 
+  my (@correct, @present, @absent);
+
+  # First, mark all the correct letters
   for (my $col = 0; $col < @secret; $col++) {
     if ($guess[$col] eq $secret[$col]) {
-      $quality{correct} .= $guess[$col];
-      $quality{present} .= ' ';
-      $quality{absent}  .= ' ';
+      push(@correct, $guess[$col]);
     }
-    elsif ($self->{secret_word} =~ m/$guess[$col]/) {
-      $quality{correct} .= ' ';
-      $quality{present} .= $guess[$col];
-      $quality{absent}  .= ' ';
-    }
-    else {
-      $quality{correct} .= ' ';
-      $quality{present} .= ' ';
-      $quality{absent} .= $guess[$col];
+    else
+    {
+      push(@correct, ' ');
     }
   }
+
+  for (my $col = 0; $col < @secret; $col++) {
+    # Letter is present but not in the correct position, but only
+    # report it once for each occurrence in the secret word, whether correct
+    # or present.
+    my $letter = $guess[$col];
+
+    ## TODO Make sure this is really the best way to count
+    # Count occurrences of this letter in the secret word
+    my $matches_total = () = $self->{secret_word} =~ m/$letter/g;
+    # Count occurrences of this letter that we've already tracked in @correct and @present
+    my $matches_already = (grep(/^$letter$/, @correct, @present)) || 0;
+
+    if ($correct[$col] eq $guess[$col]) {
+      # Already marked correct
+      push(@present, ' ');
+      push(@absent, ' ');
+    }
+    elsif ($matches_total > $matches_already) {
+      push(@present, $guess[$col]);
+      push(@absent, ' ');
+    }
+    else {
+      push(@present, ' ');
+      push(@absent, $guess[$col]);
+    }
+  }
+
+  $quality{correct} = join('', @correct);
+  $quality{present} = join('', @present);
+  $quality{absent} = join('', @absent);
 
   return \%quality;
 }
